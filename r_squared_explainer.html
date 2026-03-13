@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Understanding R²</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&family=Spectral:ital,wght@0,300;0,600;1,300&display=swap');
+
+  :root {
+    --bg:        #faf8f4;
+    --surface:   #ffffff;
+    --border:    #e2ddd6;
+    --ink:       #1c1917;
+    --muted:     #78716c;
+    --faint:     #f0ece6;
+
+    --line:      #1c1917;
+    --mean-line: #94a3b8;
+    --dot:       #1c1917;
+
+    --sse-lo:    #3b82f6;   /* blue  – SSE squares, low-R² plot  */
+    --sse-hi:    #3b82f6;   /* same blue for high too             */
+    --sst:       #f59e0b;   /* amber – TSS squares                */
+
+    --r2-lo:     #ef4444;
+    --r2-hi:     #22c55e;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font-family: 'Spectral', Georgia, serif;
+    min-height: 100vh;
+    padding: 2.5rem 3rem;
+  }
+
+  /* ── Header ── */
+  header {
+    margin-bottom: 2.2rem;
+    padding-bottom: 1.4rem;
+    border-bottom: 2px solid var(--ink);
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  header h1 {
+    font-family: 'Libre Baskerville', Georgia, serif;
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  header .subtitle {
+    font-style: italic;
+    font-weight: 300;
+    font-size: 1rem;
+    color: var(--muted);
+    max-width: 520px;
+    text-align: right;
+  }
+
+  /* ── Formula strip ── */
+  .formula-strip {
+    background: var(--ink);
+    color: #faf8f4;
+    border-radius: 4px;
+    padding: 1rem 2rem;
+    margin-bottom: 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 3rem;
+    flex-wrap: wrap;
+  }
+
+  .formula-item {
+    text-align: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.05rem;
+  }
+
+  .formula-item .label {
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #a8a29e;
+    margin-bottom: 0.25rem;
+  }
+
+  .formula-item .eq {
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+
+  .col-sse  { color: #93c5fd; }
+  .col-sst  { color: #fcd34d; }
+  .col-r2   { color: #86efac; }
+
+  /* ── Toggle ── */
+  .toggle-row {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 1.8rem;
+    flex-wrap: wrap;
+  }
+
+  .toggle-btn {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.8rem;
+    padding: 0.45rem 1.1rem;
+    border-radius: 3px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.05em;
+  }
+
+  .toggle-btn.active-sse {
+    border-color: var(--sse-lo);
+    background: #eff6ff;
+    color: var(--sse-lo);
+  }
+
+  .toggle-btn.active-sst {
+    border-color: var(--sst);
+    background: #fffbeb;
+    color: #b45309;
+  }
+
+  /* ── Two-plot layout ── */
+  .plots-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .plot-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: 1.2rem 1.2rem 0.8rem;
+  }
+
+  .plot-card-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 0.8rem;
+  }
+
+  .plot-title {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .r2-badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1rem;
+    font-weight: 600;
+    padding: 0.2rem 0.7rem;
+    border-radius: 3px;
+  }
+
+  .r2-badge.lo { background: #fee2e2; color: var(--r2-lo); }
+  .r2-badge.hi { background: #dcfce7; color: #16a34a; }
+
+  .chart-wrap { position: relative; }
+
+  /* ── Stats table below plots ── */
+  .stats-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+  }
+
+  .stats-card {
+    background: var(--surface);
+    border: 1.5px solid var(--border);
+    border-radius: 4px;
+    padding: 1.2rem 1.4rem;
+  }
+
+  .stats-card h3 {
+    font-family: 'Libre Baskerville', serif;
+    font-size: 1rem;
+    font-weight: 700;
+    margin-bottom: 0.9rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.6rem;
+  }
+
+  .stat-box {
+    background: var(--faint);
+    border-radius: 3px;
+    padding: 0.6rem 0.8rem;
+    text-align: center;
+  }
+
+  .stat-box .stat-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.68rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+  }
+
+  .stat-box .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.15rem;
+    font-weight: 600;
+  }
+
+  .stat-box.sse .stat-value { color: var(--sse-lo); }
+  .stat-box.sst .stat-value { color: #b45309; }
+  .stat-box.r2l .stat-value { color: var(--r2-lo); }
+  .stat-box.r2h .stat-value { color: #16a34a; }
+
+  /* tooltip */
+  .tooltip {
+    position: absolute;
+    background: var(--ink);
+    color: #faf8f4;
+    padding: 0.4rem 0.7rem;
+    border-radius: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.12s;
+    z-index: 50;
+    white-space: nowrap;
+  }
+
+  /* legend */
+  .legend {
+    display: flex;
+    gap: 1.2rem;
+    justify-content: center;
+    margin-top: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+  }
+
+  .leg-swatch {
+    width: 14px; height: 14px;
+    border-radius: 2px;
+    opacity: 0.5;
+  }
+
+  .leg-line {
+    width: 22px; height: 3px;
+    border-radius: 1px;
+  }
+
+  @media (max-width: 820px) {
+    .plots-row, .stats-row { grid-template-columns: 1fr; }
+    header .subtitle { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Understanding R²</h1>
+  <p class="subtitle">Same slope &amp; intercept — different scatter around the line</p>
+</header>
+
+<!-- Formula strip -->
+<div class="formula-strip">
+  <div class="formula-item">
+    <div class="label">Fitted line (both plots)</div>
+    <div class="eq">ŷ = 1.0 + 1.5·X</div>
+  </div>
+  <div class="formula-item">
+    <div class="label">Sum of Squared Errors</div>
+    <div class="eq col-sse">SSE = Σ(Yᵢ − ŷᵢ)²</div>
+  </div>
+  <div class="formula-item">
+    <div class="label">Total Sum of Squares</div>
+    <div class="eq col-sst">TSS = Σ(Yᵢ − Ȳ)²</div>
+  </div>
+  <div class="formula-item">
+    <div class="label">R-squared</div>
+    <div class="eq col-r2">R² = 1 − SSE/TSS</div>
+  </div>
+</div>
+
+<!-- Toggle buttons -->
+<div class="toggle-row">
+  <button class="toggle-btn active-sse" id="btnSSE" onclick="toggleLayer('sse')">
+    Show SSE squares (residuals)
+  </button>
+  <button class="toggle-btn active-sst" id="btnTSS" onclick="toggleLayer('sst')">
+    Show TSS squares (total variation)
+  </button>
+</div>
+
+<!-- Two plots -->
+<div class="plots-row">
+  <div class="plot-card">
+    <div class="plot-card-header">
+      <div class="plot-title">Low R²</div>
+      <div class="r2-badge lo" id="badge-lo">R² = —</div>
+    </div>
+    <div class="chart-wrap">
+      <div id="tooltip-lo" class="tooltip"></div>
+      <svg id="chart-lo"></svg>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="leg-line" style="background:var(--line)"></div>Fitted line ŷ</div>
+      <div class="legend-item"><div class="leg-line" style="background:var(--mean-line)"></div>Mean Ȳ</div>
+      <div class="legend-item"><div class="leg-swatch" style="background:var(--sse-lo)"></div>SSE squares</div>
+      <div class="legend-item"><div class="leg-swatch" style="background:var(--sst)"></div>TSS squares</div>
+    </div>
+  </div>
+
+  <div class="plot-card">
+    <div class="plot-card-header">
+      <div class="plot-title">High R²</div>
+      <div class="r2-badge hi" id="badge-hi">R² = —</div>
+    </div>
+    <div class="chart-wrap">
+      <div id="tooltip-hi" class="tooltip"></div>
+      <svg id="chart-hi"></svg>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="leg-line" style="background:var(--line)"></div>Fitted line ŷ</div>
+      <div class="legend-item"><div class="leg-line" style="background:var(--mean-line)"></div>Mean Ȳ</div>
+      <div class="legend-item"><div class="leg-swatch" style="background:var(--sse-hi)"></div>SSE squares</div>
+      <div class="legend-item"><div class="leg-swatch" style="background:var(--sst)"></div>TSS squares</div>
+    </div>
+  </div>
+</div>
+
+<!-- Stats below -->
+<div class="stats-row">
+  <div class="stats-card">
+    <h3>Low R² — numerical summary</h3>
+    <div class="stat-grid" id="stats-lo"></div>
+  </div>
+  <div class="stats-card">
+    <h3>High R² — numerical summary</h3>
+    <div class="stat-grid" id="stats-hi"></div>
+  </div>
+</div>
+
+<script>
+// ── Shared line parameters ─────────────────────────────────
+const B0 = 1.0, B1 = 1.5;
+const yhat = x => B0 + B1 * x;
+
+// ── Data ──────────────────────────────────────────────────
+// Both datasets share the SAME x values and thus the SAME ŷ values.
+// Low R²:  points scattered far from the line  → large SSE
+// High R²: points hugging the line             → small SSE
+// We deliberately keep TSS the same (same ȳ) so R² contrast is purely SSE-driven.
+
+const xVals = [-3, -2, -1, 0, 1, 2, 3, 4];
+
+// Tight residuals for high-R² (±0.2 range)
+const epsHi = [1.275, -1.53, 0.85, -1.02, 1.7, -1.275, 0.68, -1.53];
+
+// Large residuals for low-R² – we scale epsHi up but also add independent noise
+// to make sure the points look genuinely scattered, not just proportionally bigger.
+const epsLo = [-8.32, 5.76, -6.72, 7.68, -6.08, 7.04, -8.0, 5.44];
+
+function makePoints(eps) {
+  return xVals.map((x, i) => ({ x, y: +(yhat(x) + eps[i]).toFixed(3) }));
+}
+
+const ptsLo = makePoints(epsLo);
+const ptsHi = makePoints(epsHi);
+
+function stats(pts) {
+  const ybar = d3.mean(pts, d => d.y);
+  const SSE  = d3.sum(pts, d => Math.pow(d.y - yhat(d.x), 2));
+  const TSS  = d3.sum(pts, d => Math.pow(d.y - ybar, 2));
+  const R2   = 1 - SSE / TSS;
+  return { ybar, SSE, TSS, R2 };
+}
+
+// ── Chart builder ─────────────────────────────────────────
+const PX = 28;                      // pixels per unit
+const DOMAIN  = [-15, 15];         // 30 units wide → matches Y span
+const YDOMAIN = [-14, 16];         // 30 units tall to fit large residuals
+
+const margin = { top: 20, right: 16, bottom: 44, left: 44 };
+const iW = (DOMAIN[1] - DOMAIN[0]) * PX;
+const iH = (YDOMAIN[1] - YDOMAIN[0]) * PX;
+const W  = iW + margin.left + margin.right;
+const H  = iH + margin.top  + margin.bottom;
+
+const xTickVals = d3.range(Math.ceil(DOMAIN[0]),  Math.floor(DOMAIN[1])  + 1, 1);
+const yTickVals = d3.range(Math.ceil(YDOMAIN[0]), Math.floor(YDOMAIN[1]) + 1, 1)
+                    .filter(v => v % 2 === 0);   // every 2 units on Y to avoid clutter
+
+// Active layers
+let showSSE = true, showTSS = true;
+
+function buildChart(svgId, tooltipId, pts, labelClass) {
+  const xSc = d3.scaleLinear().domain(DOMAIN).range([0, iW]);
+  const ySc = d3.scaleLinear().domain(YDOMAIN).range([iH, 0]);
+
+  const svg = d3.select(`#${svgId}`).attr("width", W).attr("height", H);
+  const g   = svg.append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+
+  // Grid
+  g.append("g").attr("transform", `translate(0,${iH})`)
+    .call(d3.axisBottom(xSc).tickValues(xTickVals).tickSize(-iH))
+    .call(ax => {
+      ax.select(".domain").remove();
+      ax.selectAll(".tick line").attr("stroke","#e5e0d8").attr("stroke-dasharray","3,2");
+      ax.selectAll(".tick text").style("font-family","'IBM Plex Mono',monospace").style("font-size","10px").attr("fill","#a8a29e");
+    });
+
+  g.append("g")
+    .call(d3.axisLeft(ySc).tickValues(yTickVals).tickSize(-iW))
+    .call(ax => {
+      ax.select(".domain").remove();
+      ax.selectAll(".tick line").attr("stroke","#e5e0d8").attr("stroke-dasharray","3,2");
+      ax.selectAll(".tick text").style("font-family","'IBM Plex Mono',monospace").style("font-size","10px").attr("fill","#a8a29e");
+    });
+
+  // Axis labels
+  g.append("text").attr("x", iW/2).attr("y", iH+36).attr("text-anchor","middle")
+    .style("font-family","'Spectral',serif").style("font-size","13px").attr("fill","#78716c").text("X");
+  g.append("text").attr("transform","rotate(-90)").attr("x",-iH/2).attr("y",-32)
+    .attr("text-anchor","middle")
+    .style("font-family","'Spectral',serif").style("font-size","13px").attr("fill","#78716c").text("Y");
+
+  // Zero lines
+  g.append("line").attr("x1",xSc(0)).attr("y1",0).attr("x2",xSc(0)).attr("y2",iH)
+    .attr("stroke","#ccc8c0").attr("stroke-width",1);
+  g.append("line").attr("x1",0).attr("y1",ySc(0)).attr("x2",iW).attr("y2",ySc(0))
+    .attr("stroke","#ccc8c0").attr("stroke-width",1);
+
+  const st = stats(pts);
+
+  // ── TSS squares (amber, behind everything) ──
+  const sstGroup = g.append("g").attr("class", "sst-layer");
+  pts.forEach(d => {
+    const x1 = xSc(d.x), y1 = ySc(d.y), y2 = ySc(st.ybar);
+    const side = Math.abs(y1 - y2);
+    const top  = Math.min(y1, y2);
+    // Draw square to the RIGHT of the point
+    sstGroup.append("rect")
+      .attr("x", x1).attr("y", top)
+      .attr("width", side).attr("height", side)
+      .attr("fill", "#f59e0b").attr("fill-opacity", 0.18)
+      .attr("stroke", "#f59e0b").attr("stroke-width", 1).attr("stroke-opacity", 0.6);
+  });
+
+  // ── SSE squares (blue) ──
+  const sseGroup = g.append("g").attr("class", "sse-layer");
+  pts.forEach(d => {
+    const x1  = xSc(d.x);
+    const y1  = ySc(d.y);
+    const yh  = ySc(yhat(d.x));
+    const side = Math.abs(y1 - yh);
+    const top  = Math.min(y1, yh);
+    sseGroup.append("rect")
+      .attr("x", x1 - side).attr("y", top)
+      .attr("width", side).attr("height", side)
+      .attr("fill", "#3b82f6").attr("fill-opacity", 0.2)
+      .attr("stroke", "#3b82f6").attr("stroke-width", 1.2).attr("stroke-opacity", 0.7);
+  });
+
+  // ── Mean line (Ȳ) ──
+  g.append("line")
+    .attr("x1", xSc(DOMAIN[0])).attr("y1", ySc(st.ybar))
+    .attr("x2", xSc(DOMAIN[1])).attr("y2", ySc(st.ybar))
+    .attr("stroke", "#94a3b8").attr("stroke-width", 1.5)
+    .attr("stroke-dasharray", "6,4");
+
+  g.append("text")
+    .attr("x", xSc(DOMAIN[1]) - 4).attr("y", ySc(st.ybar) - 5)
+    .attr("text-anchor","end")
+    .style("font-family","'IBM Plex Mono',monospace").style("font-size","10px")
+    .attr("fill","#94a3b8").text(`Ȳ = ${st.ybar.toFixed(2)}`);
+
+  // ── Fitted line ──
+  g.append("line")
+    .attr("x1", xSc(DOMAIN[0])).attr("y1", ySc(yhat(DOMAIN[0])))
+    .attr("x2", xSc(DOMAIN[1])).attr("y2", ySc(yhat(DOMAIN[1])))
+    .attr("stroke", "#1c1917").attr("stroke-width", 2);
+
+  // ── Vertical residual lines ──
+  g.selectAll(".res-line").data(pts).enter()
+    .append("line").attr("class","res-line")
+    .attr("x1", d => xSc(d.x)).attr("y1", d => ySc(d.y))
+    .attr("x2", d => xSc(d.x)).attr("y2", d => ySc(yhat(d.x)))
+    .attr("stroke","#3b82f6").attr("stroke-width",1.2)
+    .attr("stroke-dasharray","4,3").attr("opacity",0.8);
+
+  // ── Dots ──
+  const tip = document.getElementById(tooltipId);
+  const wrap = document.querySelector(`#${svgId}`).closest(".chart-wrap");
+
+  g.selectAll(".dot").data(pts).enter()
+    .append("circle").attr("class","dot")
+    .attr("cx", d => xSc(d.x)).attr("cy", d => ySc(d.y))
+    .attr("r", 5)
+    .attr("fill","#1c1917").attr("stroke","white").attr("stroke-width",1.5)
+    .style("cursor","pointer")
+    .on("mouseover", function(event, d) {
+      d3.select(this).attr("r",7);
+      tip.style.opacity = "1";
+      const yh = yhat(d.x), eps = (d.y - yh).toFixed(2);
+      const sign = eps >= 0 ? "+" : "";
+      tip.innerHTML = `(${d.x}, ${d.y})<br>ŷ = ${yh.toFixed(2)} &nbsp; ε = ${sign}${eps}`;
+    })
+    .on("mousemove", function(event) {
+      const rect = wrap.getBoundingClientRect();
+      tip.style.left = (event.clientX - rect.left + 12) + "px";
+      tip.style.top  = (event.clientY - rect.top  - 38) + "px";
+    })
+    .on("mouseout", function() {
+      d3.select(this).attr("r",5);
+      tip.style.opacity = "0";
+    });
+
+  return { g, sstGroup, sseGroup, st };
+}
+
+// ── Stats cards ────────────────────────────────────────────
+function renderStats(containerId, st, r2Class) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = `
+    <div class="stat-box sse">
+      <div class="stat-label">SSE</div>
+      <div class="stat-value">${st.SSE.toFixed(2)}</div>
+    </div>
+    <div class="stat-box sst">
+      <div class="stat-label">TSS</div>
+      <div class="stat-value">${st.TSS.toFixed(2)}</div>
+    </div>
+    <div class="stat-box ${r2Class}">
+      <div class="stat-label">R²</div>
+      <div class="stat-value">${st.R2.toFixed(3)}</div>
+    </div>
+  `;
+}
+
+// ── Build both charts ──────────────────────────────────────
+const loChart = buildChart("chart-lo", "tooltip-lo", ptsLo, "lo");
+const hiChart = buildChart("chart-hi", "tooltip-hi", ptsHi, "hi");
+
+const stLo = loChart.st, stHi = hiChart.st;
+
+document.getElementById("badge-lo").textContent = `R² = ${stLo.R2.toFixed(3)}`;
+document.getElementById("badge-hi").textContent = `R² = ${stHi.R2.toFixed(3)}`;
+
+renderStats("stats-lo", stLo, "r2l");
+renderStats("stats-hi", stHi, "r2h");
+
+// ── Layer toggles ──────────────────────────────────────────
+function applyLayers() {
+  d3.selectAll(".sse-layer, .res-line").style("display", showSSE ? null : "none");
+  d3.selectAll(".sst-layer").style("display", showTSS ? null : "none");
+}
+
+function toggleLayer(which) {
+  if (which === "sse") {
+    showSSE = !showSSE;
+    const btn = document.getElementById("btnSSE");
+    btn.className = "toggle-btn" + (showSSE ? " active-sse" : "");
+  } else {
+    showTSS = !showTSS;
+    const btn = document.getElementById("btnTSS");
+    btn.className = "toggle-btn" + (showTSS ? " active-sst" : "");
+  }
+  applyLayers();
+}
+
+applyLayers();
+</script>
+</body>
+</html>
