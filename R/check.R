@@ -123,10 +123,7 @@ check <- function(answer) {
     },
 
     # ── Q9 ──────────────────────────────────────────────────────────────────
-    q9 = {
-      message("Question 9 is a free-response question \u2014 no automatic check available.")
-      return(invisible(NULL))
-    }
+    q9 = 3   # Exam 2: OLS minimises the Error Sum of Squares
   )
 
   if (round(as.numeric(answer), 2) == round(correct, 2)) {
