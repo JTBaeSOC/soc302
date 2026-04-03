@@ -11,3 +11,7 @@ Description: Provides the check() function used in SOC 302 practice exams.
 License: MIT
 Encoding: UTF-8
 RoxygenNote: 7.0.0
+Imports:
+    ggplot2,
+    knitr,
+    stats
