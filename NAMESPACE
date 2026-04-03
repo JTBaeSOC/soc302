@@ -1,3 +1,4 @@
 export(check)
 export(brexit_lines_table)
 export(brexit_lines_plot)
+export(prediction_plot)

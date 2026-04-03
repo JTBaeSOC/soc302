@@ -6,11 +6,11 @@
 #' comparison, matching standard calculator precision.
 #'
 #' Supports practice exam 1 (q1-q8: ATE, TikTok, WVS cross-tab) and
-#' practice exam 2 (q1-q10: regression, ideology interpretation,
-#' Brexit OLS). The correct exam is detected automatically from the
-#' variables present in the student's environment.
+#' practice exam 2 (q1-q14: regression, prediction errors, ideology
+#' interpretation, Brexit OLS). The correct exam is detected
+#' automatically from the variables present in the student's environment.
 #'
-#' @param answer A numeric variable named q1 through q10 holding the
+#' @param answer A numeric variable named q1 through q14 holding the
 #'   student's answer. Assign your answer first, then pass the variable:
 #'   \code{q1 <- 3.50; check(q1)}
 #'
@@ -43,11 +43,11 @@ check <- function(answer) {
 
   has_var <- function(name) exists(name, envir = env, inherits = TRUE)
 
-  valid_qs <- paste0("q", 1:10)
+  valid_qs <- paste0("q", 1:14)
   if (!var_name %in% valid_qs) {
     message(
       "Variable '", var_name, "' not recognised. ",
-      "Make sure you name your answer q1 through q10."
+      "Make sure you name your answer q1 through q14."
     )
     return(invisible(NULL))
   }
@@ -66,27 +66,27 @@ check <- function(answer) {
 
     # ── Q1 ────────────────────────────────────────────────────────────
     q1 = if (exam1_q1) {
-      mean(get_var("treat1")) - mean(get_var("control1")) # Exam 1: ATE
+      mean(get_var("treat1")) - mean(get_var("control1"))  # Exam 1: ATE
     } else {
-      cov(get_var("x"), get_var("y"))                     # Exam 2: Cov
+      cov(get_var("x"), get_var("y"))                      # Exam 2: Cov
     },
 
     # ── Q2 ────────────────────────────────────────────────────────────
     q2 = if (exam1_q1) {
-      mean(get_var("treat2")) - mean(get_var("control2")) # Exam 1: ATE binary
+      mean(get_var("treat2")) - mean(get_var("control2"))  # Exam 1: ATE binary
     } else {
       x <- get_var("x")
       y <- get_var("y")
-      cov(x, y) / var(x)                                 # Exam 2: slope
+      cov(x, y) / var(x)                                  # Exam 2: slope
     },
 
     # ── Q3 ────────────────────────────────────────────────────────────
     q3 = if (exam1_q3) {
-      mean(get_var("tiktok"))                             # Exam 1: mean
+      mean(get_var("tiktok"))                              # Exam 1: mean
     } else {
       x <- get_var("x")
       y <- get_var("y")
-      mean(y) - (cov(x, y) / var(x)) * mean(x)          # Exam 2: intercept
+      mean(y) - (cov(x, y) / var(x)) * mean(x)           # Exam 2: intercept
     },
 
     # ── Q4 ────────────────────────────────────────────────────────────
@@ -103,41 +103,51 @@ check <- function(answer) {
       tiktok <- get_var("tiktok")
       (tiktok[1] - mean(tiktok)) / sd(tiktok)            # Exam 1: z-score
     } else {
-      -0.60  # Exam 2: ideology slope
+      pts <- get_var("pts")
+      m   <- stats::lm(pts$y ~ pts$x)
+      stats::resid(m)[1]                                  # Exam 2: error pt 1
     },
 
     # ── Q6 ────────────────────────────────────────────────────────────
     q6 = if (exam1_q6) {
       tbl <- get_var("wvs_tbl")
       tbl["Democrat", "Agree"] /
-        sum(tbl["Democrat", ]) * 100  # Exam 1: row %
+        sum(tbl["Democrat", ]) * 100                      # Exam 1: row %
     } else {
-      4.50  # Exam 2: predicted at x=0
+      pts <- get_var("pts")
+      m   <- stats::lm(pts$y ~ pts$x)
+      stats::resid(m)[2]                                  # Exam 2: error pt 2
     },
 
     # ── Q7 ────────────────────────────────────────────────────────────
     q7 = if (exam1_q6) {
       tbl <- get_var("wvs_tbl")
       tbl["Republican", "Disagree"] /
-        sum(tbl[, "Disagree"]) * 100  # Exam 1: col %
+        sum(tbl[, "Disagree"]) * 100                      # Exam 1: col %
     } else {
-      1  # Exam 2: predicted at x=0 equals the intercept
+      pts <- get_var("pts")
+      m   <- stats::lm(pts$y ~ pts$x)
+      stats::resid(m)[3]                                  # Exam 2: error pt 3
     },
 
     # ── Q8 ────────────────────────────────────────────────────────────
     q8 = if (exam1_q6) {
       tbl <- get_var("wvs_tbl")
       sum(tbl[, "Hard to say"]) /
-        sum(tbl) * 100  # Exam 1: marginal %
+        sum(tbl) * 100                                    # Exam 1: marginal %
     } else {
-      3.60  # Exam 2: liberal minus conservative
+      pts <- get_var("pts")
+      m   <- stats::lm(pts$y ~ pts$x)
+      stats::resid(m)[4]                                  # Exam 2: error pt 4
     },
 
-    # ── Q9 ────────────────────────────────────────────────────────────
-    q9 = 2,   # Exam 2: OLS line number
-
-    # ── Q10 ───────────────────────────────────────────────────────────
-    q10 = 3   # Exam 2: OLS minimises the Error Sum of Squares
+    # ── Q9–Q14: exam 2 only ───────────────────────────────────────────
+    q9  = -0.60,  # ideology slope
+    q10 =  4.50,  # predicted at ideology = 0
+    q11 =  1,     # predicted at x=0 equals the intercept
+    q12 =  3.60,  # liberal minus conservative
+    q13 =  2,     # OLS line number
+    q14 =  3      # OLS minimises the Error Sum of Squares
   )
 
   if (round(as.numeric(answer), 2) == round(correct, 2)) {
