@@ -1,6 +1,6 @@
 Package: soc302
 Title: Practice Exam Checker for Social Statistics 302
-Version: 0.1.1
+Version: 0.1.2
 Author: JT Bae
 Maintainer: JT Bae <jt@example.com>
 Description: Provides the check() function used in SOC 302 practice exams.

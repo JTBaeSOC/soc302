@@ -6,12 +6,12 @@
 #' comparison, matching standard calculator precision.
 #'
 #' Supports practice exam 1 (q1-q8: ATE, TikTok, WVS cross-tab) and
-#' practice exam 2 (q1-q16: regression, prediction errors, ideology
-#' interpretation, Brexit OLS, model comparison). The correct exam is
-#' detected automatically from the variables present in the student's
+#' practice exam 2 (q1-q18: regression, prediction errors, ESS/R-squared,
+#' ideology interpretation, Brexit OLS, model comparison). The correct exam
+#' is detected automatically from the variables present in the student's
 #' environment.
 #'
-#' @param answer A numeric variable named q1 through q16 holding the
+#' @param answer A numeric variable named q1 through q18 holding the
 #'   student's answer. Assign your answer first, then pass the variable:
 #'   \code{q1 <- 3.50; check(q1)}
 #'
@@ -44,11 +44,11 @@ check <- function(answer) {
 
   has_var <- function(name) exists(name, envir = env, inherits = TRUE)
 
-  valid_qs <- paste0("q", 1:16)
+  valid_qs <- paste0("q", 1:18)
   if (!var_name %in% valid_qs) {
     message(
       "Variable '", var_name, "' not recognised. ",
-      "Make sure you name your answer q1 through q16."
+      "Make sure you name your answer q1 through q18."
     )
     return(invisible(NULL))
   }
@@ -138,20 +138,32 @@ check <- function(answer) {
       sum(tbl[, "Hard to say"]) /
         sum(tbl) * 100                                    # Exam 1: marginal %
     } else {
-      -0.60                                               # Exam 2: ideology slope
+      pts <- get_var("pts")
+      m   <- stats::lm(pts$y ~ pts$x)
+      sum(stats::resid(m)^2)                              # Exam 2: ESS
     },
 
-    # ── Q9–Q13: exam 2 only ───────────────────────────────────────────
-    q9  =  4.50,  # predicted at ideology = 0
-    q10 =  1,     # predicted at x=0 equals the intercept
-    q11 =  3.60,  # liberal minus conservative
-    q12 =  2,     # OLS line number
-    q13 =  3,     # OLS minimises the Error Sum of Squares
+    # ── Q9: exam 2 only ───────────────────────────────────────────────
+    q9 = {
+      pts <- get_var("pts")
+      m   <- stats::lm(pts$y ~ pts$x)
+      ess <- sum(stats::resid(m)^2)
+      tss <- sum((pts$y - mean(pts$y))^2)
+      1 - ess / tss                                       # Exam 2: R-squared
+    },
 
-    # ── Q14–Q16: model comparison ─────────────────────────────────────
-    q14 = 2,  # X2 is a mediator
+    # ── Q10–Q15: exam 2 only ──────────────────────────────────────────
+    q10 = -0.60,  # ideology slope
+    q11 =  4.50,  # predicted at ideology = 0
+    q12 =  1,     # predicted at x=0 equals the intercept
+    q13 =  3.60,  # liberal minus conservative
+    q14 =  2,     # OLS line number
+    q15 =  3,     # OLS minimises the Error Sum of Squares
 
-    q15 = {
+    # ── Q16–Q18: model comparison ─────────────────────────────────────
+    q16 = 2,  # X2 is a mediator
+
+    q17 = {
       df <- get_var("med_df")
       m1 <- stats::lm(df$y ~ df$x1)
       m2 <- stats::lm(df$y ~ df$x1 + df$x2)
@@ -160,7 +172,7 @@ check <- function(answer) {
       (b1 - b2) / b1 * 100               # % of x1 effect mediated
     },
 
-    q16 = {
+    q18 = {
       df <- get_var("med_df")
       m1 <- stats::lm(df$y ~ df$x1)
       m2 <- stats::lm(df$y ~ df$x1 + df$x2)
