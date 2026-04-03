@@ -57,10 +57,11 @@ check <- function(answer) {
     return(invisible(NULL))
   }
 
-  # Context flags — mutually exclusive variable names identify the exam
-  exam1_q1 <- has_var("treat1")
-  exam1_q3 <- has_var("tiktok")
-  exam1_q6 <- has_var("wvs_tbl")
+  # Context flags: explicit EXAM_2 marker takes priority over heuristics
+  is_exam2  <- has_var("EXAM_2") && isTRUE(get_var("EXAM_2"))
+  exam1_q1  <- !is_exam2 && has_var("treat1")
+  exam1_q3  <- !is_exam2 && has_var("tiktok")
+  exam1_q6  <- !is_exam2 && has_var("wvs_tbl")
 
   correct <- switch(var_name,
 
