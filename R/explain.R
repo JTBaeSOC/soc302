@@ -40,13 +40,29 @@
       "In 2-3 plain sentences, explain why their choice is wrong and why ",
       "SSE is the right criterion. No markdown formatting."
     )
+  ),
+  q15 = list(
+    correct = 2,
+    prompt  = function(ans) paste0(
+      "A student in an undergraduate social statistics course answered a ",
+      "multiple-choice question incorrectly. ",
+      "The question: 'In two regression models, Model 1 regresses earnings ",
+      "on work experience only. Model 2 adds skill rating. Work experience ",
+      "causes skill development, which in turn affects earnings — so skill ",
+      "rating lies on the causal path from experience to earnings. ",
+      "What is the role of skill rating? ",
+      "1=Multiple cause, 2=Mediator, 3=Interaction, 4=Confounder.' ",
+      "Correct answer: 2 (Mediator). Student answered: ", ans, ". ",
+      "In 2-3 plain sentences, explain why their choice is wrong and why ",
+      "skill rating is a mediator. No markdown formatting."
+    )
   )
 )
 
 .call_gemini <- function(prompt, key) {
   url  <- paste0(
     "https://generativelanguage.googleapis.com/v1beta/models/",
-    "gemini-1.5-flash:generateContent?key=", key
+    "gemini-2.0-flash:generateContent?key=", key
   )
   body <- list(
     contents = list(
@@ -74,7 +90,7 @@
 #'
 #' Sends the question context and the student's answer to the Gemini API
 #' and prints a short explanation of why the answer is incorrect.
-#' Only available for multiple-choice questions q11, q13, and q14.
+#' Available for multiple-choice questions q11, q13, q14, and q15.
 #'
 #' Requires a free Gemini API key set in the environment:
 #' \code{Sys.setenv(GEMINI_API_KEY = "your-key")}
@@ -89,8 +105,8 @@
 #'
 #' @examples
 #' \dontrun{
-#' q11 <- 2
-#' explain(q11)
+#' q15 <- 4
+#' explain(q15)
 #' }
 explain <- function(answer) {
   var_name <- deparse(substitute(answer))

@@ -43,7 +43,7 @@ check <- function(answer) {
 
   has_var <- function(name) exists(name, envir = env, inherits = TRUE)
 
-  valid_qs <- paste0("q", 1:14)
+  valid_qs <- paste0("q", 1:17)
   if (!var_name %in% valid_qs) {
     message(
       "Variable '", var_name, "' not recognised. ",
@@ -147,7 +147,28 @@ check <- function(answer) {
     q11 =  1,     # predicted at x=0 equals the intercept
     q12 =  3.60,  # liberal minus conservative
     q13 =  2,     # OLS line number
-    q14 =  3      # OLS minimises the Error Sum of Squares
+    q14 =  3,     # OLS minimises the Error Sum of Squares
+
+    # ── Q15–Q17: model comparison ─────────────────────────────────────
+    q15 = 2,  # X2 is a mediator
+
+    q16 = {
+      df <- get_var("med_df")
+      m1 <- stats::lm(df$y ~ df$x1)
+      m2 <- stats::lm(df$y ~ df$x1 + df$x2)
+      b1 <- round(stats::coef(m1)[2], 3)  # match 3dp shown in table
+      b2 <- round(stats::coef(m2)[2], 3)
+      (b1 - b2) / b1 * 100               # % of x1 effect mediated
+    },
+
+    q17 = {
+      df <- get_var("med_df")
+      m1 <- stats::lm(df$y ~ df$x1)
+      m2 <- stats::lm(df$y ~ df$x1 + df$x2)
+      r1 <- round(summary(m1)$r.squared, 3)  # match 3dp shown in table
+      r2 <- round(summary(m2)$r.squared, 3)
+      r2 - r1                                # R2 improvement
+    }
   )
 
   if (round(as.numeric(answer), 2) == round(correct, 2)) {
