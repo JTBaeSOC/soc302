@@ -1,6 +1,6 @@
 # Question metadata used to build prompts
 .mc_meta <- list(
-  q11 = list(
+  q10 = list(
     correct = 1,
     prompt  = function(ans) paste0(
       "A student in an undergraduate social statistics course answered a ",
@@ -13,7 +13,7 @@
       "the correct answer is the intercept. No markdown formatting."
     )
   ),
-  q13 = list(
+  q12 = list(
     correct = 2,
     prompt  = function(ans) paste0(
       "A student in an undergraduate social statistics course answered a ",
@@ -27,7 +27,7 @@
       "to identify the OLS line from the table. No markdown formatting."
     )
   ),
-  q14 = list(
+  q13 = list(
     correct = 3,
     prompt  = function(ans) paste0(
       "A student in an undergraduate social statistics course answered a ",
@@ -41,7 +41,7 @@
       "SSE is the right criterion. No markdown formatting."
     )
   ),
-  q15 = list(
+  q14 = list(
     correct = 2,
     prompt  = function(ans) paste0(
       "A student in an undergraduate social statistics course answered a ",
@@ -90,7 +90,7 @@
 #'
 #' Sends the question context and the student's answer to the Gemini API
 #' and prints a short explanation of why the answer is incorrect.
-#' Available for multiple-choice questions q11, q13, q14, and q15.
+#' Available for multiple-choice questions q10, q12, q13, and q14.
 #'
 #' Requires a free Gemini API key set in the environment:
 #' \code{Sys.setenv(GEMINI_API_KEY = "your-key")}
