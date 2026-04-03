@@ -103,40 +103,41 @@ check <- function(answer) {
       tiktok <- get_var("tiktok")
       (tiktok[1] - mean(tiktok)) / sd(tiktok)            # Exam 1: z-score
     } else {
-      -0.60                                               # Exam 2: ideology slope
+      -0.60  # Exam 2: ideology slope
     },
 
     # ── Q6 ────────────────────────────────────────────────────────────
     q6 = if (exam1_q6) {
       tbl <- get_var("wvs_tbl")
       tbl["Democrat", "Agree"] /
-        sum(tbl["Democrat", ]) * 100                     # Exam 1: row %
+        sum(tbl["Democrat", ]) * 100  # Exam 1: row %
     } else {
-      4.50                                                # Exam 2: predicted at x=0
+      4.50  # Exam 2: predicted at x=0
     },
 
     # ── Q7 ────────────────────────────────────────────────────────────
     q7 = if (exam1_q6) {
       tbl <- get_var("wvs_tbl")
       tbl["Republican", "Disagree"] /
-        sum(tbl[, "Disagree"]) * 100                     # Exam 1: col %
+        sum(tbl[, "Disagree"]) * 100  # Exam 1: col %
     } else {
-      3.60                                                # Exam 2: liberal - conservative
+      1  # Exam 2: predicted at x=0 equals the intercept
     },
 
     # ── Q8 ────────────────────────────────────────────────────────────
     q8 = if (exam1_q6) {
       tbl <- get_var("wvs_tbl")
-      sum(tbl[, "Hard to say"]) / sum(tbl) * 100         # Exam 1: marginal %
+      sum(tbl[, "Hard to say"]) /
+        sum(tbl) * 100  # Exam 1: marginal %
     } else {
-      2                                                   # Exam 2: OLS line number
+      3.60  # Exam 2: liberal minus conservative
     },
 
     # ── Q9 ────────────────────────────────────────────────────────────
-    q9 = 3,   # Exam 2: OLS minimises the Error Sum of Squares
+    q9 = 2,   # Exam 2: OLS line number
 
     # ── Q10 ───────────────────────────────────────────────────────────
-    q10 = 1   # Exam 2: predicted value at x=0 equals the intercept
+    q10 = 3   # Exam 2: OLS minimises the Error Sum of Squares
   )
 
   if (round(as.numeric(answer), 2) == round(correct, 2)) {
