@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CLT Explorer — World Values Survey · Soc 302</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Georgia', serif;
+      background: #f5f4f0;
+      color: #222;
+      padding: 28px 20px 56px;
+      min-width: 960px;
+    }
+
+    /* ── Header ── */
+    .header { text-align: center; margin-bottom: 24px; }
+    .kicker {
+      font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+      color: #57068c; font-family: sans-serif; margin-bottom: 5px;
+    }
+    .header h1 { font-size: 26px; color: #1a1a1a; margin-bottom: 6px; }
+    .header .subtitle {
+      font-size: 14px; font-family: sans-serif; color: #555;
+      max-width: 760px; margin: 0 auto; line-height: 1.6;
+    }
+
+    /* ── Controls bar ── */
+    .controls-bar {
+      background: white;
+      border: 1.5px solid #ddd;
+      border-radius: 14px;
+      padding: 16px 28px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      justify-content: center;
+      flex-wrap: wrap;
+      max-width: 1060px;
+      margin: 0 auto 28px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .ctrl-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ctrl-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-family: sans-serif; color: #888;
+    }
+
+    .n-display {
+      font-size: 28px; font-weight: bold; color: #57068c;
+      font-family: sans-serif; min-width: 52px; text-align: center;
+      line-height: 1;
+    }
+    .n-sub { font-size: 11px; font-family: sans-serif; color: #aaa; margin-top: 1px; }
+
+    input[type=range] {
+      width: 220px; accent-color: #57068c; cursor: pointer;
+    }
+    .range-ends {
+      display: flex; justify-content: space-between;
+      font-size: 10px; font-family: sans-serif; color: #aaa;
+      width: 220px;
+    }
+
+    .divider-v {
+      width: 1px; height: 50px; background: #e0e0e0;
+    }
+
+    .btn-group { display: flex; gap: 8px; align-items: center; }
+
+    button {
+      font-family: sans-serif; font-size: 13px;
+      border: none; border-radius: 8px; cursor: pointer;
+      padding: 9px 16px; transition: background 0.15s, transform 0.1s;
+      font-weight: 600;
+    }
+    button:active { transform: scale(0.97); }
+
+    .btn-one   { background: #57068c; color: white; }
+    .btn-fifty { background: #7d3c98; color: white; }
+    .btn-five  { background: #9b59b6; color: white; }
+    .btn-reset { background: #f0f0f0; color: #555; }
+    .btn-one:hover   { background: #6a0aaa; }
+    .btn-fifty:hover { background: #8e44ad; }
+    .btn-five:hover  { background: #a569bd; }
+    .btn-reset:hover { background: #e0e0e0; }
+
+    /* ── Three-column grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+      max-width: 1060px;
+      margin: 0 auto;
+    }
+
+    .col {
+      background: white;
+      border-radius: 14px;
+      padding: 18px 16px 14px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      border: 1.5px solid #e8e8e8;
+    }
+
+    .col-title {
+      font-size: 15px; font-weight: bold; margin-bottom: 2px;
+    }
+    .col-desc {
+      font-size: 11.5px; font-family: sans-serif; color: #777;
+      margin-bottom: 12px; line-height: 1.4;
+    }
+
+    .section-label {
+      font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-family: sans-serif; color: #aaa; margin-bottom: 4px;
+    }
+
+    .chart-wrap { position: relative; height: 130px; margin-bottom: 0; }
+    .chart-wrap-lg { position: relative; height: 165px; }
+
+    /* Arrow between pop and sample charts */
+    .arrow-row {
+      display: flex; align-items: center; justify-content: center;
+      padding: 5px 0; gap: 6px;
+      font-size: 11px; font-family: sans-serif; color: #999;
+    }
+    .arrow-row .arrow { font-size: 18px; color: #bbb; }
+
+    /* ── Stats panel ── */
+    .stats-panel {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 5px 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #eee;
+    }
+    .stat-item { }
+    .stat-key {
+      font-size: 10px; font-family: sans-serif; text-transform: uppercase;
+      letter-spacing: 1px; color: #aaa;
+    }
+    .stat-val {
+      font-size: 15px; font-family: 'Georgia', serif;
+      font-weight: bold; color: #222;
+    }
+
+    /* ── Latest poll ticker ── */
+    .ticker {
+      margin-top: 9px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 12px;
+      font-family: sans-serif;
+      line-height: 1.4;
+      min-height: 38px;
+      background: #f9f9f9;
+      border: 1px solid #e8e8e8;
+      color: #444;
+      transition: background 0.3s;
+    }
+    .ticker.hit  { background: #eafaf1; border-color: #a9dfbf; color: #1e8449; }
+    .ticker.miss { background: #fdedec; border-color: #f5b7b1; color: #922b21; }
+
+    /* ── Key insight ── */
+    .insights {
+      max-width: 1060px; margin: 24px auto 0;
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 16px;
+    }
+    .insight-card {
+      background: white; border-radius: 12px; padding: 16px;
+      border-left: 4px solid #57068c;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+    }
+    .insight-card .ic-title {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px;
+      font-family: sans-serif; color: #57068c; margin-bottom: 6px;
+    }
+    .insight-card .ic-body {
+      font-size: 13px; font-family: sans-serif; color: #444; line-height: 1.6;
+    }
+
+    .footer-note {
+      text-align: center; margin-top: 32px;
+      font-size: 11px; font-family: sans-serif; color: #bbb;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<div class="header">
+  <div class="kicker">Soc 302 · Lecture 20 · Interactive Demo</div>
+  <h1>CLT Explorer: World Values Survey</h1>
+  <p class="subtitle">
+    You are a researcher. You cannot survey the entire world — so you draw a random sample.
+    Set your sample size, run surveys, and watch the Central Limit Theorem emerge from real WVS Wave 7 data.
+    The population distributions below are <em>not</em> normal — but your sampling distributions will be.
+  </p>
+</div>
+
+<!-- ═══ CONTROLS ═══ -->
+<div class="controls-bar">
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Sample Size</div>
+    <div class="n-display" id="nDisplay">50</div>
+    <div class="n-sub">people per survey</div>
+  </div>
+
+  <div class="ctrl-group">
+    <input type="range" id="nSlider" min="10" max="500" step="5" value="50" />
+    <div class="range-ends"><span>n = 10</span><span>n = 500</span></div>
+  </div>
+
+  <div class="divider-v"></div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Run Surveys</div>
+    <div class="btn-group">
+      <button class="btn-one"   onclick="runSurveys(1)">+1</button>
+      <button class="btn-fifty" onclick="runSurveys(50)">+50</button>
+      <button class="btn-five"  onclick="runSurveys(500)">+500</button>
+      <button class="btn-reset" onclick="resetAll()">↺ Reset</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ MAIN GRID ═══ -->
+<div class="grid">
+
+  <!-- ── Column 1: Death Penalty ── -->
+  <div class="col">
+    <div class="col-title" style="color:#c0392b;">Death Penalty Justifiability</div>
+    <div class="col-desc">Q288 · 1 = Never justifiable &nbsp;···&nbsp; 10 = Always justifiable<br>
+      True population mean: <strong>μ = 4.91</strong> &nbsp;|&nbsp; σ = 2.09</div>
+
+    <div class="section-label">Population distribution (N ≈ 94,000)</div>
+    <div class="chart-wrap"><canvas id="popChart0"></canvas></div>
+
+    <div class="arrow-row">
+      <span class="arrow">↓</span>
+      <span>random sample of <strong id="nArrow0">50</strong></span>
+      <span class="arrow">↓</span>
+    </div>
+
+    <div class="section-label">Sampling distribution of x̄ &nbsp;<span id="nPolls0" style="color:#c0392b;">(0 surveys)</span></div>
+    <div class="chart-wrap-lg"><canvas id="sampleChart0"></canvas></div>
+
+    <div class="stats-panel">
+      <div class="stat-item">
+        <div class="stat-key">Mean of x̄'s</div>
+        <div class="stat-val" id="meanEst0">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">True μ</div>
+        <div class="stat-val" style="color:#c0392b;">4.91</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">SE = σ/√n</div>
+        <div class="stat-val" id="seVal0">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">Margin of Error</div>
+        <div class="stat-val" id="moeVal0">—</div>
+      </div>
+    </div>
+
+    <div class="ticker" id="ticker0">Run a survey to see results…</div>
+  </div>
+
+  <!-- ── Column 2: Ideology ── -->
+  <div class="col">
+    <div class="col-title" style="color:#2980b9;">Left–Right Political Ideology</div>
+    <div class="col-desc">Q240 · 1 = Far Left &nbsp;···&nbsp; 10 = Far Right<br>
+      True population mean: <strong>μ = 5.67</strong> &nbsp;|&nbsp; σ = 2.43</div>
+
+    <div class="section-label">Population distribution (N ≈ 69,000)</div>
+    <div class="chart-wrap"><canvas id="popChart1"></canvas></div>
+
+    <div class="arrow-row">
+      <span class="arrow">↓</span>
+      <span>random sample of <strong id="nArrow1">50</strong></span>
+      <span class="arrow">↓</span>
+    </div>
+
+    <div class="section-label">Sampling distribution of x̄ &nbsp;<span id="nPolls1" style="color:#2980b9;">(0 surveys)</span></div>
+    <div class="chart-wrap-lg"><canvas id="sampleChart1"></canvas></div>
+
+    <div class="stats-panel">
+      <div class="stat-item">
+        <div class="stat-key">Mean of x̄'s</div>
+        <div class="stat-val" id="meanEst1">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">True μ</div>
+        <div class="stat-val" style="color:#2980b9;">5.67</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">SE = σ/√n</div>
+        <div class="stat-val" id="seVal1">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">Margin of Error</div>
+        <div class="stat-val" id="moeVal1">—</div>
+      </div>
+    </div>
+
+    <div class="ticker" id="ticker1">Run a survey to see results…</div>
+  </div>
+
+  <!-- ── Column 3: Employment ── -->
+  <div class="col">
+    <div class="col-title" style="color:#27ae60;">Employment Status</div>
+    <div class="col-desc">Q279 recoded · 0 = Not employed &nbsp;···&nbsp; 1 = Employed<br>
+      True proportion employed: <strong>p = 0.594</strong> &nbsp;|&nbsp; σ = 0.491</div>
+
+    <div class="section-label">Population distribution (N ≈ 96,000)</div>
+    <div class="chart-wrap"><canvas id="popChart2"></canvas></div>
+
+    <div class="arrow-row">
+      <span class="arrow">↓</span>
+      <span>random sample of <strong id="nArrow2">50</strong></span>
+      <span class="arrow">↓</span>
+    </div>
+
+    <div class="section-label">Sampling distribution of p̂ &nbsp;<span id="nPolls2" style="color:#27ae60;">(0 surveys)</span></div>
+    <div class="chart-wrap-lg"><canvas id="sampleChart2"></canvas></div>
+
+    <div class="stats-panel">
+      <div class="stat-item">
+        <div class="stat-key">Mean of p̂'s</div>
+        <div class="stat-val" id="meanEst2">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">True p</div>
+        <div class="stat-val" style="color:#27ae60;">0.594</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">SE = σ/√n</div>
+        <div class="stat-val" id="seVal2">—</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-key">Margin of Error</div>
+        <div class="stat-val" id="moeVal2">—</div>
+      </div>
+    </div>
+
+    <div class="ticker" id="ticker2">Run a survey to see results…</div>
+  </div>
+
+</div><!-- /grid -->
+
+<!-- ═══ KEY INSIGHTS ═══ -->
+<div class="insights">
+
+  <div class="insight-card">
+    <div class="ic-title">&#128270; What you're seeing</div>
+    <div class="ic-body">
+      Each bar in the sampling distribution is one survey result.
+      After many surveys, the bars form a bell curve — even though the population
+      distributions above are skewed, bimodal, or binary. That's the CLT.
+    </div>
+  </div>
+
+  <div class="insight-card">
+    <div class="ic-title">&#8597; Try changing sample size</div>
+    <div class="ic-body">
+      Slide <em>n</em> down to 10 and run 500 surveys — the sampling distribution
+      is wide. Now slide to 500: the bell curve tightens dramatically around the
+      true mean. This is the Law of Large Numbers working alongside the CLT.
+    </div>
+  </div>
+
+  <div class="insight-card">
+    <div class="ic-title">&#177; Margin of Error</div>
+    <div class="ic-body">
+      The margin of error (±1.96 SE) tells you where 95% of all possible survey
+      results will land. It shrinks as √n grows — doubling the precision requires
+      <em>quadrupling</em> your sample size. Now you know why polling is expensive.
+    </div>
+  </div>
+
+</div>
+
+<div class="footer-note">
+  Population data: World Values Survey Wave 7 (v6.0) · Soc 302: Statistics for Social Research · NYU · Mike Hout
+</div>
+
+<!-- ═══ JAVASCRIPT ═══ -->
+<script>
+// ── Population data from WVS Wave 7 ──────────────────────────────────────────
+const SCENARIOS = [
+  {
+    // Q288: Death penalty justifiability
+    color: '#c0392b',
+    popColor: 'rgba(192,57,43,0.65)',
+    sampleColor: 'rgba(192,57,43,0.7)',
+    values:  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    weights: [7277, 5502, 10587, 13148, 22535, 14527, 11008, 5801, 1828, 2046],
+    trueMean: 4.91,
+    trueSD:   2.09,
+    rangeMin: 1.8,
+    rangeMax: 8.0,
+    isBinary: false,
+    unit: ''
+  },
+  {
+    // Q240: Left-right ideology
+    color: '#2980b9',
+    popColor: 'rgba(41,128,185,0.65)',
+    sampleColor: 'rgba(41,128,185,0.7)',
+    values:  [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    weights: [4812, 2634, 4884, 5063, 20115, 8913, 6718, 6369, 2856, 7072],
+    trueMean: 5.67,
+    trueSD:   2.43,
+    rangeMin: 2.2,
+    rangeMax: 9.2,
+    isBinary: false,
+    unit: ''
+  },
+  {
+    // Q279: Employment (binary)
+    color: '#27ae60',
+    popColor: 'rgba(39,174,96,0.65)',
+    sampleColor: 'rgba(39,174,96,0.7)',
+    values:  [0, 1],
+    weights: [39000, 56987],
+    trueMean: 0.594,
+    trueSD:   0.491,
+    rangeMin: 0.20,
+    rangeMax: 0.95,
+    isBinary: true,
+    unit: ''
+  }
+];
+
+const N_BINS = 32;
+let sampleSize = 50;
+let results    = [[], [], []];
+let sampleCharts = [null, null, null];
+
+// ── Utility functions ─────────────────────────────────────────────────────────
+
+function weightedSample(values, weights) {
+  const total = weights.reduce((a, b) => a + b, 0);
+  let r = Math.random() * total;
+  for (let i = 0; i < values.length; i++) {
+    r -= weights[i];
+    if (r <= 0) return values[i];
+  }
+  return values[values.length - 1];
+}
+
+function sampleMean(sc, n) {
+  let sum = 0;
+  for (let i = 0; i < n; i++) sum += weightedSample(sc.values, sc.weights);
+  return sum / n;
+}
+
+function dnorm(x, mu, sigma) {
+  return Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2)) / (sigma * Math.sqrt(2 * Math.PI));
+}
+
+function getBins(sc) {
+  const w = (sc.rangeMax - sc.rangeMin) / N_BINS;
+  return Array.from({length: N_BINS}, (_, i) => ({
+    lo:  sc.rangeMin + i * w,
+    hi:  sc.rangeMin + (i + 1) * w,
+    mid: sc.rangeMin + (i + 0.5) * w
+  }));
+}
+
+// ── Initialise population charts ──────────────────────────────────────────────
+
+function initPopCharts() {
+  SCENARIOS.forEach((sc, idx) => {
+    const total = sc.weights.reduce((a, b) => a + b, 0);
+    const pcts  = sc.weights.map(w => (w / total * 100).toFixed(1));
+
+    const ctx = document.getElementById('popChart' + idx).getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: sc.values.map(String),
+        datasets: [{
+          data: pcts,
+          backgroundColor: sc.popColor,
+          borderColor: sc.color,
+          borderWidth: 1,
+          borderRadius: 3
+        }]
+      },
+      options: {
+        animation: false,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: { grid: { display: false },
+               ticks: { font: { size: 10 } } },
+          y: { grid: { color: '#f0f0f0' },
+               ticks: { font: { size: 9 }, callback: v => v + '%' } }
+        }
+      }
+    });
+  });
+}
+
+// ── Initialise sampling distribution charts ───────────────────────────────────
+
+function initSampleCharts() {
+  SCENARIOS.forEach((sc, idx) => {
+    const bins   = getBins(sc);
+    const labels = bins.map(b => b.mid.toFixed(2));
+
+    const ctx = document.getElementById('sampleChart' + idx).getContext('2d');
+    sampleCharts[idx] = new Chart(ctx, {
+      data: {
+        labels,
+        datasets: [
+          {
+            type: 'bar',
+            data: new Array(N_BINS).fill(0),
+            backgroundColor: sc.sampleColor,
+            borderColor: 'white',
+            borderWidth: 0.5,
+            borderRadius: 2,
+            yAxisID: 'y'
+          },
+          {
+            type: 'line',
+            data: new Array(N_BINS).fill(null),
+            borderColor: '#e67e22',
+            borderWidth: 2.5,
+            pointRadius: 0,
+            tension: 0.4,
+            yAxisID: 'y'
+          }
+        ]
+      },
+      options: {
+        animation: { duration: 120 },
+        plugins: { legend: { display: false }, tooltip: { enabled: false } },
+        scales: {
+          x: {
+            grid: { display: false },
+            ticks: {
+              maxTicksLimit: 7,
+              font: { size: 9 },
+              callback: function(val, i) {
+                const v = parseFloat(this.getLabelForValue(val));
+                return v.toFixed(1);
+              }
+            }
+          },
+          y: {
+            grid: { color: '#f0f0f0' },
+            ticks: { font: { size: 9 } },
+            title: { display: true, text: 'Count', font: { size: 9 } }
+          }
+        }
+      }
+    });
+  });
+}
+
+// ── Update a single column ────────────────────────────────────────────────────
+
+function updateColumn(idx) {
+  const sc     = SCENARIOS[idx];
+  const n      = sampleSize;
+  const data   = results[idx];
+  const nPolls = data.length;
+  const bins   = getBins(sc);
+  const bw     = (sc.rangeMax - sc.rangeMin) / N_BINS;
+
+  // Histogram counts
+  const counts = new Array(N_BINS).fill(0);
+  data.forEach(v => {
+    const i = Math.floor((v - sc.rangeMin) / bw);
+    if (i >= 0 && i < N_BINS) counts[i]++;
+  });
+
+  // Theoretical normal curve (scaled to counts)
+  const se = sc.trueSD / Math.sqrt(n);
+  const curve = bins.map(b => nPolls > 0 ? nPolls * bw * dnorm(b.mid, sc.trueMean, se) : null);
+
+  // Update chart
+  const ch = sampleCharts[idx];
+  ch.data.datasets[0].data = counts;
+  ch.data.datasets[1].data = curve;
+  ch.update();
+
+  // Stats
+  const meanEst = nPolls > 0 ? (data.reduce((a, b) => a + b, 0) / nPolls).toFixed(3) : '—';
+  const seStr   = se.toFixed(3);
+  const moe     = (1.96 * se).toFixed(3);
+
+  document.getElementById('meanEst' + idx).textContent = nPolls > 0 ? meanEst : '—';
+  document.getElementById('seVal'   + idx).textContent = '±' + seStr;
+  document.getElementById('moeVal'  + idx).textContent = '±' + moe;
+  document.getElementById('nPolls'  + idx).textContent = '(' + nPolls + ' survey' + (nPolls !== 1 ? 's' : '') + ')';
+}
+
+// ── Update latest-result ticker ───────────────────────────────────────────────
+
+function updateTicker(idx, lastVal) {
+  const sc      = SCENARIOS[idx];
+  const ticker  = document.getElementById('ticker' + idx);
+  const se      = sc.trueSD / Math.sqrt(sampleSize);
+  const moe     = 1.96 * se;
+  const inRange = Math.abs(lastVal - sc.trueMean) <= moe;
+
+  let msg, cls;
+
+  if (sc.isBinary) {
+    const pct = (lastVal * 100).toFixed(1);
+    msg = `Latest survey: <strong>${pct}% employed</strong>. `;
+    msg += inRange
+      ? `✓ Within ±${(moe * 100).toFixed(1)}pp of true proportion (${(sc.trueMean*100).toFixed(1)}%)`
+      : `✗ Outside ±${(moe * 100).toFixed(1)}pp margin — true proportion is ${(sc.trueMean*100).toFixed(1)}%`;
+  } else {
+    msg = `Latest survey mean: <strong>${lastVal.toFixed(2)}</strong>. `;
+    msg += inRange
+      ? `✓ Within ±${moe.toFixed(2)} of true mean (${sc.trueMean})`
+      : `✗ Outside ±${moe.toFixed(2)} margin — true mean is ${sc.trueMean}`;
+  }
+
+  ticker.innerHTML = msg;
+  ticker.className = 'ticker ' + (inRange ? 'hit' : 'miss');
+}
+
+// ── Run surveys ───────────────────────────────────────────────────────────────
+
+function runSurveys(k) {
+  const n = sampleSize;
+  SCENARIOS.forEach((sc, idx) => {
+    let last;
+    for (let i = 0; i < k; i++) {
+      last = sampleMean(sc, n);
+      results[idx].push(last);
+    }
+    updateColumn(idx);
+    if (k <= 50) updateTicker(idx, last);   // only update ticker for small runs
+    // Update n-arrows
+    document.getElementById('nArrow' + idx).textContent = n;
+  });
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+
+function resetAll() {
+  results = [[], [], []];
+  for (let idx = 0; idx < 3; idx++) {
+    const ch = sampleCharts[idx];
+    ch.data.datasets[0].data = new Array(N_BINS).fill(0);
+    ch.data.datasets[1].data = new Array(N_BINS).fill(null);
+    ch.update();
+    document.getElementById('meanEst' + idx).textContent = '—';
+    document.getElementById('seVal'   + idx).textContent = '—';
+    document.getElementById('moeVal'  + idx).textContent = '—';
+    document.getElementById('nPolls'  + idx).textContent = '(0 surveys)';
+    document.getElementById('ticker'  + idx).textContent = 'Run a survey to see results…';
+    document.getElementById('ticker'  + idx).className   = 'ticker';
+  }
+}
+
+// ── Slider ────────────────────────────────────────────────────────────────────
+
+document.getElementById('nSlider').addEventListener('input', function () {
+  sampleSize = parseInt(this.value);
+  document.getElementById('nDisplay').textContent = sampleSize;
+  // Recompute SE stats (but keep existing results)
+  for (let idx = 0; idx < 3; idx++) {
+    updateColumn(idx);
+    document.getElementById('nArrow' + idx).textContent = sampleSize;
+  }
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+initPopCharts();
+initSampleCharts();
+</script>
+
+</body>
+</html>
